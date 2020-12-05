@@ -1,0 +1,605 @@
+---
+title: "Solution"
+author: "Simon Pierre KITEGI"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Solution}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  rmarkdown.html_vignette.check_title = FALSE
+)
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(haven);library(dplyr);library(purrr);library(tidyverse);library(factoextra);library(cluster)
+```
+
+## Assignment Context
+
+One of our clients asked us to develop the best possible message for the product they offer.
+We developed a survey experiment that would display a random combination of phrases along with a price and the length of a subscription.
+Each respondent saw 12 random permutations of the message.
+For each permutation, the respondent was asked to rate `"How likely are you to download this mobile app?"`.
+The app we are referring to in this case was an app to help people sleep better.
+
+Your goal now is to advice on the best combination of attributes displayed in the message.
+Each **attribute** (e.g. `price`) has multiple **levels** that, as explained, vary for each task.
+
+<!--[](images/experiment.JPG)-->
+
+Alongside the experiment, we conducted a regular survey with a set of questions related to sleep and socio-demographic behavior.
+Thanks to the survey we were able to describe a group of highly likely downloaders so that our client was able to understand the potential audience in the market.
+
+### Your tasks
+
+1.  Find out how each attribute (and level) influences the overall likeliness to download (`experiment_data$answer`).
+2.  Describe the groups of respondents that we see in the data using the added demographic, psychological and behavioral data. Feel free to experiment with clustering techniques in addition to descriptives.
+
+You are free to use any method that you think is reasonable for this challenge.
+
+> Hint: The message testing experiment is a ratings-based conjoint on an ordinal scale.
+
+#### Data
+
+See an overview and an explanation of the datasets below.
+
+#### Experiment Data
+
+```{r}
+experiment_data <-
+  read_sav('data/experiment_data.sav')
+```
+
+#### Cleaning of the data
+
+Answers translate into the level with the below dictionary
+
+-   1 - Very unlikely
+-   2 - Somewhat unlikely
+-   3 - Somewhat likely
+-   4 - Very likely
+
+#### Attribute map
+
+There were 6 attributes considered in the message testing at the experiment.
+Below you can see which attributes had what possible levels.
+
+```{r}
+experiment_data %>%
+  select(duration:social_proof) %>%
+  map(unique) %>% map(~t(t(.x))
+```
+
+1.  Find out how each attribute (and level) influences the overall likeliness to download <!-- (experiment_data$answer) -->
+
+\#We will see how the duration influences the overall likeliness to download
+
+```{r}
+with(experiment_data, table(duration, answer))
+lattice::histogram( ~answer | duration , data=experiment_data)
+
+```
+
+It seems that for each period the around 43% are not willing to download the app.
+But we can be optimist and classify the 3 and 4 in two different groups to see which conclusion we can get.
+Because these two groups are probably willing to download the app.
+
+```{r}
+as.data.frame.table(with(experiment_data, table(duration, answer))) %>% filter(answer %in% c(3:4)) %>% group_by(duration) %>% summarise(Freq = sum(Freq)) %>% top_n(1)
+```
+
+For the **3 months of duration**, the likeliness to download the app seems to be higher.
+We can conclude that for a smaller duration the number of people who is willing to download the app is higher.
+The marketing team of the company can reduce the duration to 1, 2 and 3 as different options for the customers.
+It can be good for customer segmentation too and for the design of the business model.
+
+\#We will see how the offer influences the overall likeliness to download
+
+```{r}
+with(experiment_data, table(offer, answer))
+lattice::histogram( ∼ answer | offer , data=experiment_data)
+```
+
+For the offer attribute, a large number of customers are not willing to download the app.
+As in the previous example, we will gather the data for the answer 3 and 4 to evaluate the findings
+
+```{r}
+as.data.frame.table(with(experiment_data, table(offer, answer))) %>% filter(answer %in% c(3:4)) %>% group_by(offer) %>% summarise(Freq = sum(Freq)) %>% top_n(2)
+```
+
+The offer **Improve your health for the long-run** can be selected for any further improvement, and can be added to the offer **give you the energy to unlock your fullest potential**.
+These offers can be merge to rebuild a new offer of the product.
+The target key words(in order) for the new offer that can be build can be: **Health, Energy, Improve, Give**Or they can merge them for any further analysis.
+
+##### We will see how the outcome influences the overall likeliness to download
+
+```{r}
+with(experiment_data, table(outcome, answer))
+lattice::histogram( ∼ answer | outcome , data=experiment_data)
+```
+
+Here also a large number in any case is not willing do download the app.
+We will proceed to the merging and sorting of the 3 and 4 answers
+
+```{r}
+as.data.frame(with(experiment_data, table(outcome, answer))) %>% filter(answer %in% c(3:4)) %>% group_by(outcome)%>% summarise(Freq = sum(Freq)) %>% top_n(2)
+```
+
+The two outcomes can be taken into account for the design of a new one.
+The key words for the new outcome can be **Bad habits, sleep mindset**
+
+\#We will see how price influences the overall likeliness to download
+
+```{r}
+with(experiment_data, table(price, answer))
+lattice::histogram( ∼ answer | price , data=experiment_data)
+```
+
+According to the results the willing to download is rising with the the decrease of the price.
+We can conclude that \$20/month can be one of the price of the product, but it can be split also to 5,10 with different duration to harvest many customers for the benefit of the company.
+
+\#We will see how the rtb influences the overall likeliness to download
+
+```{r}
+with(experiment_data, table(rtb, answer))
+lattice::histogram( ∼ answer | rtb , data=experiment_data)
+```
+
+It can be difficult to take a great conclusion form the data, as the largest number is not willing to download the app.
+We will merge the probably ones together and see how they work
+
+```{r}
+as.data.frame(with(experiment_data, table(rtb, answer))) %>% filter(answer %in% c(3:4)) %>% group_by(rtb) %>% summarise(Freq = sum(Freq)) %>% top_n(2)
+```
+
+The probably winning rtbs can be these both.
+Also they have to be merged together to build a new one.
+
+\#We will see how the social_proof influences the overall likeliness to download
+
+```{r}
+with(experiment_data, table(social_proof, answer))
+lattice::histogram( ∼ answer | social_proof , data=experiment_data)
+```
+
+The same situation here.
+We will make the same process as previous
+
+```{r}
+as.data.frame(with(experiment_data, table(social_proof, answer))) %>% filter(answer %in% c(3:4)) %>% group_by(social_proof) %>% summarise(Freq = sum(Freq)) %>% top_n(2)
+```
+
+For the social proof these two categories **scientific evidence, leading researchers** are respectvely the top group of customers that can will to download the app.
+They should have an important attention.
+
+```{r}
+lattice::histogram( ∼ answer | colnames(experiment_data[2:8]) , data=experiment_data)
+```
+
+**Conclusion**
+
+In conclusion, from this assessment on the willing to download the app, these following conclusion can be taken into account.
+For the 3 months of duration, the likeliness to download the app seems to be higher.
+we recommend that the marketing team of the company can reduce the duration to 1, 2 and 3 as different options for the customers.
+For the offer attribute, The offer levels **Improve your health for the long-run** can be selected for any further improvement, and can be added to the offer **give you the energy to unlock your fullest potential**.
+These offers can be merge to rebuild a new offer of the product.
+The target key words(in order) for the new offer that can be build can be: **Health, Energy, Improve, Give**Or they can merge them for any further analysis.
+Besides, for the outcome attibute, the two outcomes **breaking bad habits and creating new routines, changing your sleep mindset** can be taken into account for the design of a new one.
+The key words for the new outcome can be **Bad habits, sleep mindset**.
+Furthermore, According to the results the willing to download is rising with the the decrease of the price.
+We can conclude that \$20/month can be one of the price of the product, but it can be split also to 5,10 with different duration(1, 2 and 3) to harvest many customers for the benefit of the company.
+Last but not the least, for The probably winning rtbs can be these both **a program created just for you, cognitive behavioral therapy**.
+Also they have to be merged together to build a new one.
+Finally, for the social proof these two categories **scientific evidence, leading researchers** are respectively the top group of customers that can willing to download the app.
+They should have an important attention.
+
+### 2.Describe the groups of respondents that we see in the data using the added demographic, psychological and behavioral data.
+
+Feel free to experiment with clustering techniques in addition to descriptives.
+
+## Survey data
+
+```{r}
+survey_data <-
+  read_sav('data/survey_data.sav')
+```
+
+### Demographic battery
+
+```{r}
+survey_demo <-
+  survey_data %>%
+  select(response_id, d_urban:s_problem, d_marital:weights)
+head(survey_demo,1)
+```
+
+Preprocessing of the data
+
+```{r}
+survey_demo <-na.omit(survey_demo)
+survey_demo <- as.data.frame(survey_demo) #change the structure of the data to a data frame to be easy to manipulate
+survey_demo <- survey_demo[-1] # remove the response_id column
+survey_demo_scaled <- scale(survey_demo[-c(9,18,19)]) #scale the data to be easier and more confident for clustering[we remove all the categorical values]
+head(survey_demo_scaled,1)
+```
+
+```{r}
+fviz_nbclust(survey_demo_scaled, kmeans, method = "wss") +
+geom_vline(xintercept = 4, linetype = 2) #Identification of cluster number in the scaled data, 4 cluster can be good for the job because beyond the 5 additional cluster have a little value.
+```
+
+```{r}
+# Compute k-means with k = 4
+set.seed(123)
+survey_demo_km <- kmeans(survey_demo_scaled, centers = 4, nstart = 25) #we select nstart 50 to have a more stable result
+fviz_cluster(survey_demo_km, data = survey_demo[-c(9,18,19)]  , #visualisation of the clusters
+palette = c("#2E9FDF", "green", "#E7B800", "#FC4E07", "red"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+Interpretation
+
+```{r}
+survey_demo_cl <- cbind(survey_demo, cluster = survey_demo_km$cluster) #Add the cluster to the original data
+survey_demo_cluster_count <- count(survey_demo_cl,cluster) #count the number of customer per cluster
+head(survey_demo_cluster_count)
+head(survey_demo)
+```
+
+```{r}
+(survey_demo_cluster_result <- survey_demo_cl %>%group_by(cluster)%>%summarise_all(list(mean))%>%round())# get the final result of the mean of each attribute per cluster and round them to make the analysis easier
+```
+
+Our customers are divided into two two groups they are all in urban and suburban areas.
+The majority are females are.
+The customers are dominated by whites and a little of Asian and mixed race.
+The minimal level of education is college and the maximum is postgraduates courses, but the majority has an associate degree level.
+They all have an income greater than 25,000USD and a little greater than both 50,000 and 100,000USD.
+They all have sleep problem mostly in night.
+The majority are divorced and a little is married.
+The majority has 4 to 5 people in their household.
+They are all parents two groups have children younger than 2 years and the rest none.
+The majority has one child older than 10 years old.
+The majority of groups considered themselves as Independent and Moderate in political view.
+The majority is working for full time and for fixed work schedule.
+For the 4 groups, 2 work between 29 and 30 and the rest, for 40 and above.
+
+*Limit:* We was not able to handle the issue related to the age and region during our analysis and for the interpretation also we had some issue with the weight column.
+So we was not able to considered them in the analysis.
+
+### Philosophy Module
+
+This module aimed to verify **Personal philosophy on Science, Products and Health**
+
+```{r}
+survey_philosophy <-
+  survey_data %>%
+  select(response_id, contains('m1_philosophy')) 
+```
+
+Preprocessing of the data
+
+```{r}
+survey_philosophy <- as.data.frame(survey_philosophy) #change the structure of the data to a data frame to be easy to manipulate
+survey_philosophy <- survey_philosophy[-1] # remove the response_id column
+head(survey_philosophy) #Visualise the data
+```
+
+```{r}
+survey_philosophy <- na.omit(survey_philosophy) #remove any missing data 
+survey_philosophy_scaled <- scale(survey_philosophy) #scale the data to be easier and more confident for clustering
+fviz_nbclust(survey_philosophy_scaled, kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2) #Identification of cluster number in the scaled data, 3 cluster can be good for the job because beyond the 5 additional cluster have a little value.
+```
+
+```{r}
+# Compute k-means with k = 3
+set.seed(123)
+survey_philosophy_km <- kmeans(survey_philosophy_scaled, centers = 3, nstart = 50) #we select nstart 50 to have a more stable result
+factoextra::fviz_cluster(survey_philosophy_km, data = survey_philosophy  , #visualisation of the clusters
+palette = c("#2E9FDF", "green", "#E7B800", "#FC4E07", "red"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+Interpretation
+
+```{r}
+survey_philosophy_cl <- cbind(survey_philosophy, cluster = survey_philosophy_km$cluster) #Add the cluster to the original data
+survey_philosophy_cluster_count <- count(survey_philosophy_cl,cluster) #count the number of customer per cluster
+head(survey_philosophy_cluster_count)
+```
+
+The customers are much represented in cluster 1.
+
+```{r}
+(survey_philosophy_cluster_result<- survey_philosophy_cl%>%group_by(cluster)%>%summarise_all(list(mean))%>%round()) # get the final result of the mean of each attribute per cluster and round them to make the analysis easier
+```
+
+We can divide the customers into three significants groups with these highlights information.
+Two groups over 3 agree on the evidence of medical advice for their health.
+They do not agree for the importance of scientific research on society, but a little part of them somewhat agree.
+They somewhat agree about the rightness of western medicine approach.
+They somewhat agree about the product based on immediate health rather than long term one.
+The two groups differ on the attribute stands for trying new product known for heath benefits.
+The first ones majority neither agree or disagree but the last somewhat agree.
+According to the fact they would like to know about how the product impact their health, the majority somewhat agree, but the rest neither agree or disagree.
+The majority somewhat agree on the fact that their personal wellness is one of their top priorities.
+The majority somewhat agree on their skeptically mood about the value of health supplements that are not regulated by the Food & Drug Administration (FDA)
+
+### Awareness Module
+
+This module aimed to check **Attitudes & Awareness** towards statements related to sleep.
+
+<!--![](images/m2.JPG)-->
+
+```{r}
+survey_awareness <-
+  survey_data %>%
+    select(response_id, contains('m2_awareness'))
+head(survey_awareness,1)
+```
+
+Pre processing of the data
+
+```{r}
+survey_awareness <- as.data.frame(survey_awareness) #change the structure of the data to a data frame to be easy to manipulate
+survey_awareness <- survey_awareness[-1] # remove the response_id column
+head(survey_awareness) #Visualise the data
+```
+
+```{r}
+survey_awareness[is.na(survey_awareness)] <- 0
+head(survey_awareness)
+```
+
+```{r}
+survey_awareness_scaled <- scale(survey_awareness) 
+fviz_nbclust(survey_awareness_scaled, kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2) #Identification of cluster number in the scaled data, 3 cluster can be good for the job because beyond the 5 additional cluster have a little value.
+```
+
+```{r}
+# Compute k-means with k = 3
+set.seed(123)
+survey_awareness_km <- kmeans(survey_awareness_scaled, centers = 3, nstart = 50) #we select nstart 50 to have a more stable result
+factoextra::fviz_cluster(survey_awareness_km, data = survey_awareness  , #visualisation of the clusters
+palette = c("#2E9FDF", "green", "#E7B800", "#FC4E07", "red"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+Interpretation
+
+```{r}
+survey_awareness_cl <- cbind(survey_awareness, cluster = survey_awareness_km$cluster) #Add the cluster to the original data
+survey_awareness_cluster_count <- count(survey_awareness_cl,cluster) #count the number of customer per cluster
+survey_awareness_cluster_count
+```
+
+The customers are much represented in cluster 1.
+
+```{r}
+(survey_awareness_cluster_result<- survey_awareness_cl %>% group_by(cluster)%>%summarise_all(list(mean))%>%round())# get the final result of the mean of each attribute per cluster and round them to make the analysis easier
+```
+
+The customers can be clustered in two groups.
+The first which represent the majority is not aware about one of the software.
+The second is aware about Noon, Calm and FitBit.
+The last ones they are aware about Sleepio, sleep quality, FitBit, Calm, and omada.
+In conclusion **Calm** and **FitBit** are the most known.
+
+### Source & Solutions Module
+
+This module asked about **sources of trouble with sleeping** at night and any **actions taken to improve the quality of sleep**.
+
+### Source question
+
+> Thinking about the past year, what are the primary reasons you have trouble sleeping at night?
+> Select up to three.
+
+<!--![](images/source.JPG)-->
+
+```{r}
+survey_source <-
+  survey_data %>%
+    select(response_id, contains('source'))
+head(survey_source,1)
+```
+
+```{r}
+survey_source <- as.data.frame(survey_source) #change the structure of the data to a data frame to be easy to manipulate
+
+survey_source <- survey_source[-1] # remove the response_id column
+survey_source[is.na(survey_source)] <- 0
+head(survey_source,1) #Visualise the data
+```
+
+```{r}
+survey_source_scaled <- scale(survey_source)
+fviz_nbclust(survey_source_scaled, kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2) #Identification of cluster number in the scaled data, 3 cluster can be good for the job because beyond the 5 additional cluster have a little value.
+```
+
+```{r}
+# Compute k-means with k = 3
+set.seed(123)
+survey_source_km <- kmeans(survey_source_scaled, centers = 3, nstart = 50) #we select nstart 50 to have a more stable result
+factoextra::fviz_cluster(survey_source_km, data = survey_source  , #visualisation of the clusters
+palette = c("#2E9FDF", "green", "#E7B800", "#FC4E07", "red"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+Interpretation
+
+```{r}
+survey_source_cl <- cbind(survey_source, cluster = survey_source_km$cluster) #Add the cluster to the original data
+survey_source_cluster_count <- count(survey_source_cl,cluster) #count the number of customer per cluster
+head(survey_source_cluster_count)
+```
+
+The customers are much represented in cluster 1.
+
+```{r}
+(survey_source_cluster_result<- survey_source_cl%>%group_by(cluster)%>%summarise_all(list(mean))%>%round())# get the final result of the mean of each attribute per cluster and round them to make the analysis easier
+```
+
+The primary reasons for sleeping trouble at night for the first group is medication, the second group did not have and the for last group is the Stress from personal life events.
+
+### Behavioral questions
+
+<!--![](images/behavior.JPG)-->
+
+```{r}
+survey_behavior <-
+  survey_data %>%
+    select(response_id, contains('behavior'))
+head(survey_behavior)
+```
+
+```{r}
+survey_behavior <-
+  survey_data %>%
+    select(response_id, contains('behavior'))
+head(survey_behavior)
+```
+
+```{r}
+survey_behavior <- as.data.frame(survey_behavior) #change the structure of the data to a data frame to be easy to manipulate
+survey_behavior <- survey_behavior[-1] # remove the response_id column
+survey_behavior[is.na(survey_behavior)] <- 0 #Change the Na value to 0
+
+#Delete the colums that have 0 as sum.
+      for (i in colnames(survey_behavior)){
+        if(sum(survey_behavior$i) < 1){
+         dataNumber = which(colnames(survey_behavior)==i)
+        }}
+survey_behavior <- survey_behavior[-dataNumber]
+
+head(survey_behavior)#Visualise the data
+```
+
+```{r}
+survey_behavior_scaled <- scale(survey_behavior[-ncol(survey_behavior)])
+fviz_nbclust(survey_behavior_scaled, kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2) #Identification of cluster number in the scaled data, 3 cluster can be good for the job because beyond the 5 additional cluster have a little value.
+```
+
+```{r}
+# Compute k-means with k = 3
+set.seed(123)
+survey_behavior_km <- kmeans(survey_behavior_scaled, centers = 3, nstart = 50) #we select nstart 50 to have a more stable result
+factoextra::fviz_cluster(survey_behavior_km, data = survey_behavior  , #visualisation of the clusters
+palette = c("#2E9FDF", "green", "#E7B800", "#FC4E07", "red"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+Interpretation
+
+```{r}
+survey_behavior_cl <- cbind(survey_behavior, cluster = survey_behavior_km$cluster) #Add the cluster to the original data
+survey_behavior_cluster_count <- count(survey_behavior_cl,cluster) #count the number of customer per cluster
+head(survey_behavior_cluster_count)
+```
+
+The customers are much represented in cluster 1.
+
+```{r}
+(survey_behavior_cluster_result<- survey_behavior_cl%>%group_by(cluster)%>%summarise_all(list(mean))%>%round())# get the final result of the mean of each attribute per cluster and round them to make the analysis easier
+
+```
+
+Interpretation:
+
+-   **The cluster 1** has tried meditation and they've made change to reduce stress.
+    They think that talking to a doctor about their trouble sleeping is very successful.
+    **They find very successful the steps they've used to improve their sleeping**(Stuck to a nightly routine and Tracked my sleep using an app, website, or journal, Purchased products or devices to improve my sleep, Tried over-the-counter sleep supplements, Tried meditation, Made changes to reduce stress, Altered my diet, Altered my exercise routine).
+
+-   **The cluster 2**, they find very successful, the application of theses methods (Stuck to a nightly routine and Tried over-the-counter sleep supplements) as the bests for improving their sleep in the past year.
+
+-   **The cluster 3**, they find these methods as the bests ones to improve their sleep.(Tried over-the-counter sleep supplements, Talked to their doctor about trouble sleeping in the past, Tried over-the-counter sleep supplements, Tried prescribed medication and Tried meditation ).
+    They find **Visited a sleep clinic** as somewhat successfull
+
+Other questions related to source and solutions
+
+<!--![](images/other.JPG)-->
+
+```{r}
+survey_behavior2 <-
+  survey_data %>%
+    select(response_id, interst_cbt:interest_coach)
+```
+
+```{r}
+head(survey_behavior2)
+```
+
+```{r}
+survey_behavior2 <- as.data.frame(survey_behavior2) #change the structure of the data to a data frame to be easy to manipulate
+survey_behavior2 <- survey_behavior2[-1] # remove the response_id column
+head(survey_behavior2)#Visualise the data
+```
+
+```{r}
+survey_behavior2_scaled <- scale(survey_behavior2[-ncol(survey_behavior2)])
+fviz_nbclust(survey_behavior2_scaled, kmeans, method = "wss") +
+geom_vline(xintercept = 3, linetype = 2) #Identification of cluster number in the scaled data, 3 cluster can be good for the job because beyond the 5 additional cluster have a little value.
+```
+
+```{r}
+# Compute k-means with k = 3
+set.seed(123)
+survey_behavior2_km <- kmeans(survey_behavior2_scaled, centers = 3, nstart = 50) #we select nstart 50 to have a more stable result
+factoextra::fviz_cluster(survey_behavior2_km, data = survey_behavior2  , #visualisation of the clusters
+palette = c("#2E9FDF", "green", "#E7B800", "#FC4E07", "red"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+Interpretation
+
+```{r}
+survey_behavior2_cl <- cbind(survey_behavior2, cluster = survey_behavior2_km$cluster) #Add the cluster to the original data
+survey_behavior2_cluster_count <- count(survey_behavior2_cl,cluster) #count the number of customer per cluster
+head(survey_behavior2_cluster_count)
+```
+
+The customers are much represented in cluster 1.
+
+```{r}
+(survey_behavior2_cluster_result<- survey_behavior2_cl%>%group_by(cluster)%>%summarise_all(list(mean))%>%round())# get the final result of the mean of each attribute per cluster and round them to make the analysis easier
+```
+
+-   **The cluster 1**, find somewhat successful, trying cognitive behavioral therapy and working with a professional coach to improve their health; and They have all worked with professional coach fo the goal.
+
+-   **The cluster 2**, find somewhat successful, trying cognitive behavioral therapy and working with a professional coach to improve their health; and They all have not worked with professional coach fo the goal.
+
+-   **The cluster 3**, are somewhat uninterested in, trying cognitive behavioral therapy and working with a professional coach to improve their health; and They all have not worked with professional coach fo the goal.
